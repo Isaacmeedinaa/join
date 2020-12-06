@@ -1,3 +1,4 @@
+const _ = require("lodash");
 const { Interest, interestValidator } = require("../models/Interest");
 
 const interestController = {
@@ -17,7 +18,7 @@ const interestController = {
     }
 
     // Save to database
-    let interest = new Interest(req.body);
+    let interest = new Interest(_.pick(req.body, ["name"]));
 
     // Save to database
     interest = await interest.save();
