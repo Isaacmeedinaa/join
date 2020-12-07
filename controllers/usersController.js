@@ -1,10 +1,13 @@
 const _ = require("lodash");
 const bcrypt = require("bcrypt");
 const { User, userValidator } = require("../models/User");
+const { Interest } = require("../models/Interest");
 
 const usersController = {
   getUsers: async (req, res) => {
-    const users = await User.find().select("-__v");
+    const users = await User.find()
+      .populate("interests", "-__v")
+      .select("-__v -password");
     res.send(users);
   },
   registerUser: async (req, res) => {
@@ -36,6 +39,47 @@ const usersController = {
     };
 
     res.send(resObj);
+  },
+  updateUserInterests: async (req, res) => {
+    let user = await User.findById(req.params.id).select("-__v -password");
+    if (!user) return res.status(404).send({ message: "User does not exist." });
+
+    const newInterestsArray = await Promise.all(
+      req.body.interests.map(async (interest) => {
+        try {
+          let interestItem = await Interest.findById(interest);
+          if (!interestItem)
+            return res.status(404).send({ message: "Interest was not found." });
+          return interestItem;
+        } catch {
+          return res.status(404).send({ message: "Interest was not found." });
+        }
+      })
+    );
+
+    user.interests = newInterestsArray;
+    user = await user.save();
+
+    res.send(user);
+  },
+  removeUserInterest: async (req, res) => {
+    let user = await User.findById(req.params.id)
+      .populate("interests", "-__v")
+      .select("-__v -password");
+    if (!user) return res.status(404).send({ message: "User does not exist." });
+
+    const sentInterest = await Interest.findById(req.body.interest);
+    if (!sentInterest)
+      return res.status(404).send({ message: "Interest was not found." });
+
+    const newInterestsArray = user.interests.filter(
+      (interest) => !sentInterest._id.equals(interest._id)
+    );
+
+    user.interests = newInterestsArray;
+    user = await user.save();
+
+    res.send(user);
   },
 };
 
